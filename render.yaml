@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: partnerza
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node backend/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
