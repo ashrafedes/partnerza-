@@ -501,7 +501,7 @@ export default function SubmitOrder() {
                     imgSrc = product.images[0].image_path || product.images[0];
                   }
                   return imgSrc ? (
-                    <img src={`http://localhost:5000/uploads/${imgSrc}`} alt="" className="w-16 h-16 object-cover rounded border" />
+                    <img src={`/uploads/${imgSrc}`} alt="" className="w-16 h-16 object-cover rounded border" />
                   ) : product.videos && product.videos.length > 0 ? (
                     <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center">
                       <span className="text-xs text-gray-500">Video</span>

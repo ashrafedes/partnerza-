@@ -45,7 +45,7 @@ export default function ProductPage() {
   }
 
   const { product, images, whatsapp_url } = data;
-  const imageUrl = (filename) => `http://localhost:5000/uploads/${filename}`;
+  const imageUrl = (filename) => `/uploads/${filename}`;
 
   return (
     <div className="min-h-screen bg-gray-50">

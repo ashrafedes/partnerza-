@@ -245,14 +245,14 @@ export default function ProductDetail() {
               >
                 {product.main_media_type === 'video' && product.videos && product.videos.length > 0 ? (
                   <video
-                    src={`http://localhost:5000/uploads/${product.videos[0]?.video_path}`}
+                    src={`/uploads/${product.videos[0]?.video_path}`}
                     controls
                     className="max-w-full max-h-full object-contain"
                   />
                 ) : product.images && product.images.length > 0 ? (
                   <>
                     <img
-                      src={`http://localhost:5000/uploads/${product.images[mainImage]?.image_path || product.images[mainImage]}`}
+                      src={`/uploads/${product.images[mainImage]?.image_path || product.images[mainImage]}`}
                       alt={product.name}
                       className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105"
                       onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML='<div class="text-gray-400 text-sm">Failed to load image</div>'; }}
@@ -280,7 +280,7 @@ export default function ProductDetail() {
                       className={`aspect-square border-2 rounded-sm overflow-hidden relative ${i === mainImage ? 'border-amazon-orange ring-2 ring-amazon-orange' : 'border-gray-200 hover:border-gray-400'}`}
                     >
                       <img 
-                        src={`http://localhost:5000/uploads/${img?.image_path || img}`} 
+                        src={`/uploads/${img?.image_path || img}`} 
                         alt="" 
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PC9zdmc+'; }}
@@ -298,7 +298,7 @@ export default function ProductDetail() {
                 <div className="mt-4">
                   <h4 className="text-sm font-semibold text-gray-600 mb-2">Product Video</h4>
                   <video
-                    src={`http://localhost:5000/uploads/${product.videos[0]?.video_path}`}
+                    src={`/uploads/${product.videos[0]?.video_path}`}
                     controls
                     className="w-full max-h-64 rounded border"
                   />
@@ -415,7 +415,7 @@ export default function ProductDetail() {
           {/* Main Gallery Image */}
           <div className="max-w-[90vw] max-h-[80vh] flex items-center justify-center">
             <img
-              src={`http://localhost:5000/uploads/${product.images[galleryIndex]?.image_path || product.images[galleryIndex]}`}
+              src={`/uploads/${product.images[galleryIndex]?.image_path || product.images[galleryIndex]}`}
               alt={product.name}
               className="max-w-full max-h-[80vh] object-contain"
               onError={(e) => { e.target.style.display='none'; }}
@@ -441,7 +441,7 @@ export default function ProductDetail() {
                 className={`w-16 h-16 border-2 rounded overflow-hidden flex-shrink-0 ${i === galleryIndex ? 'border-amazon-orange' : 'border-gray-600 hover:border-gray-400'}`}
               >
                 <img
-                  src={`http://localhost:5000/uploads/${img?.image_path || img}`}
+                  src={`/uploads/${img?.image_path || img}`}
                   alt=""
                   className="w-full h-full object-cover"
                 />
@@ -604,7 +604,7 @@ export default function ProductDetail() {
                     {existingImages.map((img) => (
                       <div key={img.id} className="relative">
                         <img
-                          src={`http://localhost:5000/uploads/${img.image_path}`}
+                          src={`/uploads/${img.image_path}`}
                           alt=""
                           className="w-20 h-20 object-cover rounded border"
                         />

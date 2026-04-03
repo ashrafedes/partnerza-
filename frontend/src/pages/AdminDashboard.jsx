@@ -567,7 +567,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-4 py-3">
                             {w.receipt_url ? (
-                              <a href={`http://localhost:5000/uploads/${w.receipt_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                              <a href={`/uploads/${w.receipt_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
                                 View Receipt
                               </a>
                             ) : (
@@ -650,7 +650,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3">
                           {p.receipt_url ? (
-                            <a href={`http://localhost:5000/uploads/${p.receipt_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                            <a href={`/uploads/${p.receipt_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
                               View Receipt
                             </a>
                           ) : (
