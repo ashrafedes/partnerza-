@@ -10,27 +10,39 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    console.log('Login attempt:', { email, passwordProvided: !!password });
+    
     if (!email || !password) {
+      console.log('Login failed: Missing email or password');
       return res.status(400).json({ error: 'Email and password are required' });
     }
     
     // Find user by email
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    console.log('User lookup result:', { found: !!user, userId: user?.id, hasPasswordHash: !!user?.password_hash });
     
     if (!user) {
+      console.log('Login failed: User not found for email:', email);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     
     // Check if user has a password set
     if (!user.password_hash) {
+      console.log('Login failed: No password hash for user:', user.id);
       return res.status(401).json({ error: 'Password not set for this account. Please contact admin.' });
     }
     
     // Verify password
+    console.log('Comparing password with bcrypt...');
     const valid = await bcrypt.compare(password, user.password_hash);
+    console.log('Password comparison result:', valid);
+    
     if (!valid) {
+      console.log('Login failed: Invalid password for user:', user.id);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
+    
+    console.log('Login successful for user:', user.id);
     
     // Generate JWT token
     const token = jwt.sign(
