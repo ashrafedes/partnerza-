@@ -3,11 +3,19 @@ services:
     name: partnerza
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: cd frontend && npm install && npm run build && cd .. && npm install
     startCommand: node backend/index.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FIREBASE_PROJECT_ID
+        value: partnerza
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false  # Set manually in Render dashboard
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false  # Set manually in Render dashboard
 
