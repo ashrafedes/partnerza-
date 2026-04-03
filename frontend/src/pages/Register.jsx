@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, getRedirectResult } from 'firebase/auth';
 import { auth } from '../firebase';
 import api from '../api/axios';
 
@@ -16,6 +16,37 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Handle redirect result from Google sign-in
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          setLoading(true);
+          const { user } = result;
+          
+          // Register profile in SQLite via backend
+          await api.post('/api/auth/register', {
+            uid: user.uid,
+            name: user.displayName || 'Google User',
+            email: user.email,
+            role: formData.role,
+            phone: user.phoneNumber || ''
+          });
+
+          navigate('/login');
+        }
+      } catch (err) {
+        console.error('Redirect result error:', err);
+        setError(err.message || 'Registration failed.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handleRedirectResult();
+  }, [navigate, formData.role]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -54,21 +85,11 @@ export default function Register() {
 
     try {
       const provider = new GoogleAuthProvider();
-      const { user } = await signInWithPopup(auth, provider);
-      
-      // Register profile in SQLite via backend
-      await api.post('/api/auth/register', {
-        uid: user.uid,
-        name: user.displayName || 'Google User',
-        email: user.email,
-        role: formData.role,
-        phone: user.phoneNumber || ''
-      });
-
-      navigate('/login');
+      await signInWithRedirect(auth, provider);
+      // Page will reload and useEffect will handle the result
     } catch (err) {
-      setError(err.message);
-    } finally {
+      console.error('Google registration error:', err);
+      setError(err.message || 'Google registration failed. Please try again.');
       setLoading(false);
     }
   };

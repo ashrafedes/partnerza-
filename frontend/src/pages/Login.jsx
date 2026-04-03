@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider, getRedirectResult } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,49 @@ const Login = () => {
 
   const navigate = useNavigate();
   const { setUser } = useAuth();
+
+  // Handle redirect result from Google sign-in
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          setLoading(true);
+          const token = await result.user.getIdToken();
+          
+          const response = await api.get('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          const userData = response.data.user || response.data;
+          setUser(userData);
+          localStorage.setItem('demoUser', JSON.stringify(userData));
+
+          const intendedPath = localStorage.getItem('intendedPath');
+          localStorage.removeItem('intendedPath');
+          
+          if (intendedPath && intendedPath !== '/login') {
+            navigate(intendedPath);
+          } else if (userData.role === 'superadmin') {
+            navigate('/admin');
+          } else if (userData.role === 'supplier') {
+            navigate('/supplier');
+          } else {
+            navigate('/marketer');
+          }
+        }
+      } catch (err) {
+        console.error('Redirect result error:', err);
+        if (err.code === 'auth/user-not-found' || err.response?.status === 404) {
+          setError('Account not found. Please register first with Google.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handleRedirectResult();
+  }, [navigate, setUser]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,13 +88,13 @@ const Login = () => {
         localStorage.removeItem('intendedPath');
         
         if (intendedPath && intendedPath !== '/login') {
-          window.location.href = `http://localhost:3001${intendedPath}`;
+          navigate(intendedPath);
         } else if (userData.role === 'superadmin') {
-          window.location.href = 'http://localhost:3001/admin';
+          navigate('/admin');
         } else if (userData.role === 'supplier') {
-          window.location.href = 'http://localhost:3001/supplier';
+          navigate('/supplier');
         } else {
-          window.location.href = 'http://localhost:3001/marketer';
+          navigate('/marketer');
         }
         return;
       } else {
@@ -96,13 +139,13 @@ const Login = () => {
       localStorage.removeItem('intendedPath');
       
       if (intendedPath && intendedPath !== '/login') {
-        window.location.href = `http://localhost:3001${intendedPath}`;
+        navigate(intendedPath);
       } else if (userData.role === 'superadmin') {
-        window.location.href = 'http://localhost:3001/admin';
+        navigate('/admin');
       } else if (userData.role === 'supplier') {
-        window.location.href = 'http://localhost:3001/supplier';
+        navigate('/supplier');
       } else {
-        window.location.href = 'http://localhost:3001/marketer';
+        navigate('/marketer');
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -128,41 +171,11 @@ const Login = () => {
 
     try {
       const provider = new GoogleAuthProvider();
-      const { user } = await signInWithPopup(auth, provider);
-      const token = await user.getIdToken();
-
-      const response = await api.get('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const userData = response.data.user || response.data;
-      setUser(userData);
-      localStorage.setItem('demoUser', JSON.stringify(userData));
-
-      const intendedPath = localStorage.getItem('intendedPath');
-      localStorage.removeItem('intendedPath');
-      
-      if (intendedPath && intendedPath !== '/login') {
-        window.location.href = `http://localhost:3001${intendedPath}`;
-      } else if (userData.role === 'superadmin') {
-        window.location.href = 'http://localhost:3001/admin';
-      } else if (userData.role === 'supplier') {
-        window.location.href = 'http://localhost:3001/supplier';
-      } else {
-        window.location.href = 'http://localhost:3001/marketer';
-      }
+      await signInWithRedirect(auth, provider);
+      // Page will reload and useEffect will handle the result
     } catch (err) {
       console.error('Google login error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Login cancelled');
-      } else if (err.code === 'auth/account-exists-with-different-credential') {
-        setError('An account already exists with this email using a different login method');
-      } else if (err.code === 'auth/user-not-found' || err.response?.status === 404) {
-        setError('Account not found. Please register first with Google.');
-      } else {
-        setError(err.message || 'Google login failed. Please try again.');
-      }
-    } finally {
+      setError(err.message || 'Google login failed. Please try again.');
       setLoading(false);
     }
   };
