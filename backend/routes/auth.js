@@ -3,43 +3,77 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const admin = require('../firebase-admin');
 const { verifyToken, requireRole } = require('../middleware/verifyToken');
 
-// POST /api/auth/login - Login with email/password (for dev mode)
+// POST /api/auth/login - Login with email/password OR Firebase ID token
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, idToken } = req.body;
     
-    console.log('Login attempt:', { email, passwordProvided: !!password });
+    console.log('Login attempt:', { email, passwordProvided: !!password, idTokenProvided: !!idToken });
     
-    if (!email || !password) {
-      console.log('Login failed: Missing email or password');
-      return res.status(400).json({ error: 'Email and password are required' });
+    let user = null;
+    let firebaseUid = null;
+    let userEmail = email;
+    let userName = null;
+    
+    // If Firebase ID token provided, verify it first
+    if (idToken) {
+      try {
+        console.log('Verifying Firebase ID token...');
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        firebaseUid = decodedToken.uid;
+        userEmail = decodedToken.email;
+        userName = decodedToken.name || decodedToken.email?.split('@')[0] || 'User';
+        console.log('Firebase token verified:', { uid: firebaseUid, email: userEmail });
+        
+        // Look up user in SQLite by Firebase UID or email
+        user = db.prepare('SELECT * FROM users WHERE id = ? OR email = ?').get(firebaseUid, userEmail);
+        
+        // If user not found in SQLite, auto-create from Firebase data
+        if (!user) {
+          console.log('User not found in SQLite, auto-creating...');
+          const stmt = db.prepare(`
+            INSERT INTO users (id, name, email, role, phone, whatsapp, country, password_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          stmt.run(firebaseUid, userName, userEmail, 'marketer', '', '', 'Egypt', null);
+          user = db.prepare('SELECT * FROM users WHERE id = ?').get(firebaseUid);
+          console.log('Auto-created user in SQLite:', user);
+        }
+      } catch (firebaseErr) {
+        console.error('Firebase token verification failed:', firebaseErr.message);
+        return res.status(401).json({ error: 'Invalid Firebase token' });
+      }
+    } else if (email && password) {
+      // Traditional email/password login
+      user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+      console.log('User lookup result:', { found: !!user, userId: user?.id, hasPasswordHash: !!user?.password_hash });
+      
+      if (!user) {
+        console.log('Login failed: User not found for email:', email);
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+      
+      if (!user.password_hash) {
+        console.log('Login failed: No password hash for user:', user.id);
+        return res.status(401).json({ error: 'Password not set for this account. Use Google login or contact admin.' });
+      }
+      
+      const valid = await bcrypt.compare(password, user.password_hash);
+      console.log('Password comparison result:', valid);
+      
+      if (!valid) {
+        console.log('Login failed: Invalid password for user:', user.id);
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Email and password required, or provide Firebase ID token' });
     }
-    
-    // Find user by email
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-    console.log('User lookup result:', { found: !!user, userId: user?.id, hasPasswordHash: !!user?.password_hash });
     
     if (!user) {
-      console.log('Login failed: User not found for email:', email);
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-    
-    // Check if user has a password set
-    if (!user.password_hash) {
-      console.log('Login failed: No password hash for user:', user.id);
-      return res.status(401).json({ error: 'Password not set for this account. Please contact admin.' });
-    }
-    
-    // Verify password
-    console.log('Comparing password with bcrypt...');
-    const valid = await bcrypt.compare(password, user.password_hash);
-    console.log('Password comparison result:', valid);
-    
-    if (!valid) {
-      console.log('Login failed: Invalid password for user:', user.id);
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'User not found' });
     }
     
     console.log('Login successful for user:', user.id);

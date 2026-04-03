@@ -151,8 +151,20 @@ const Login = () => {
         }
         return;
       } else {
+        // Non-demo user: Try Firebase auth first, then send ID token to backend
         try {
-          const loginResponse = await api.post('/api/auth/login', { email, password });
+          console.log('Attempting Firebase sign-in...');
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const firebaseUid = userCredential.user.uid;
+          const idToken = await userCredential.user.getIdToken();
+          console.log('Firebase auth successful, got ID token');
+          
+          // Send ID token to backend for verification and SQLite sync
+          const loginResponse = await api.post('/api/auth/login', { 
+            email, 
+            idToken 
+          });
+          
           const { token, user } = loginResponse.data;
           
           localStorage.setItem('token', token);
@@ -163,42 +175,25 @@ const Login = () => {
           localStorage.removeItem('intendedPath');
           
           if (intendedPath && intendedPath !== '/login') {
-            window.location.href = `http://localhost:3001${intendedPath}`;
+            navigate(intendedPath);
           } else if (user.role === 'superadmin') {
-            window.location.href = 'http://localhost:3001/admin';
+            navigate('/admin');
           } else if (user.role === 'supplier') {
-            window.location.href = 'http://localhost:3001/supplier';
+            navigate('/supplier');
           } else {
-            window.location.href = 'http://localhost:3001/marketer';
+            navigate('/marketer');
           }
           return;
-        } catch (backendErr) {
-          console.log('Backend login failed, trying Firebase...', backendErr.message);
+        } catch (firebaseErr) {
+          console.error('Firebase login error:', firebaseErr);
+          if (firebaseErr.response?.status === 401) {
+            setError('Invalid email or password');
+          } else {
+            setError(firebaseErr.message || 'Login failed');
+          }
+          setLoading(false);
+          return;
         }
-      }
-
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const token = await userCredential.user.getIdToken();
-
-      const response = await api.get('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const userData = response.data.user || response.data;
-      setUser(userData);
-      localStorage.setItem('demoUser', JSON.stringify(userData));
-
-      const intendedPath = localStorage.getItem('intendedPath');
-      localStorage.removeItem('intendedPath');
-      
-      if (intendedPath && intendedPath !== '/login') {
-        navigate(intendedPath);
-      } else if (userData.role === 'superadmin') {
-        navigate('/admin');
-      } else if (userData.role === 'supplier') {
-        navigate('/supplier');
-      } else {
-        navigate('/marketer');
       }
     } catch (err) {
       console.error('Login error:', err);
