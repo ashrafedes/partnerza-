@@ -44,6 +44,9 @@ router.post('/login', async (req, res) => {
         }
       } catch (firebaseErr) {
         console.error('Firebase token verification failed:', firebaseErr.message);
+        if (firebaseErr.message && firebaseErr.message.includes('configuration')) {
+          return res.status(401).json({ error: 'Firebase not configured on server. Please contact admin or use demo login.' });
+        }
         return res.status(401).json({ error: 'Invalid Firebase token' });
       }
     } else if (email && password) {
