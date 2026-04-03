@@ -4,7 +4,7 @@ import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDhofDHaUFJPiFY2jOzkG9Jfs2chOUFqAA",
-  authDomain: "partnerza.onrender.com",
+  authDomain: "partnerza.firebaseapp.com",
   projectId: "partnerza",
   storageBucket: "partnerza.firebasestorage.app",
   messagingSenderId: "904830444554",
