@@ -5,6 +5,13 @@ const path = require('path');
 
 const app = express();
 
+// Security headers for Firebase auth popup to work
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  next();
+});
+
 app.use(cors({ origin: function(origin, callback) {
   // Allow all origins in production (Render)
   callback(null, true);
