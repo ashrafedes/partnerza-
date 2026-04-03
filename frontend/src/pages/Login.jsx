@@ -17,6 +17,11 @@ const Login = () => {
   // Handle redirect result from Google sign-in
   useEffect(() => {
     const handleRedirectResult = async () => {
+      // Only run this once on mount
+      if (sessionStorage.getItem('redirectHandled') === 'true') {
+        return;
+      }
+      
       console.log('Checking for redirect result...');
       try {
         const result = await getRedirectResult(auth);
@@ -25,15 +30,45 @@ const Login = () => {
         if (result && result.user) {
           console.log('User from redirect:', result.user.email);
           setLoading(true);
-          const token = await result.user.getIdToken();
+          sessionStorage.setItem('redirectHandled', 'true');
+          
+          let token;
+          try {
+            token = await result.user.getIdToken();
+          } catch (tokenErr) {
+            console.error('Failed to get token:', tokenErr);
+            setError('Failed to get authentication token');
+            setLoading(false);
+            return;
+          }
+          
           console.log('Got token, calling /api/auth/me');
           
-          const response = await api.get('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          let response;
+          try {
+            response = await api.get('/api/auth/me', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          } catch (apiErr) {
+            console.error('API error:', apiErr);
+            if (apiErr.response?.status === 404) {
+              setError('Account not found. Please register first with Google.');
+            } else {
+              setError('Server error. Please try again.');
+            }
+            setLoading(false);
+            return;
+          }
 
           const userData = response.data.user || response.data;
           console.log('User data from backend:', userData);
+          
+          if (!userData) {
+            setError('Invalid user data received');
+            setLoading(false);
+            return;
+          }
+          
           setUser(userData);
           localStorage.setItem('demoUser', JSON.stringify(userData));
 
@@ -54,10 +89,13 @@ const Login = () => {
         }
       } catch (err) {
         console.error('Redirect result error:', err);
-        if (err.code === 'auth/user-not-found' || err.response?.status === 404) {
+        sessionStorage.setItem('redirectHandled', 'true');
+        if (err.code === 'auth/user-not-found') {
           setError('Account not found. Please register first with Google.');
+        } else if (err.message) {
+          setError(err.message);
         } else {
-          setError(err.message || 'Login failed');
+          setError('Login failed. Please try again.');
         }
       } finally {
         setLoading(false);
@@ -65,7 +103,12 @@ const Login = () => {
     };
 
     handleRedirectResult();
-  }, [navigate, setUser]);
+    
+    // Cleanup function
+    return () => {
+      // Don't clear the flag on unmount - we want it to persist
+    };
+  }, []); // Empty deps - run once on mount
 
   const handleSubmit = async (e) => {
     e.preventDefault();
