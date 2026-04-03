@@ -17,17 +17,23 @@ const Login = () => {
   // Handle redirect result from Google sign-in
   useEffect(() => {
     const handleRedirectResult = async () => {
+      console.log('Checking for redirect result...');
       try {
         const result = await getRedirectResult(auth);
+        console.log('Redirect result:', result);
+        
         if (result && result.user) {
+          console.log('User from redirect:', result.user.email);
           setLoading(true);
           const token = await result.user.getIdToken();
+          console.log('Got token, calling /api/auth/me');
           
           const response = await api.get('/api/auth/me', {
             headers: { Authorization: `Bearer ${token}` }
           });
 
           const userData = response.data.user || response.data;
+          console.log('User data from backend:', userData);
           setUser(userData);
           localStorage.setItem('demoUser', JSON.stringify(userData));
 
@@ -43,11 +49,15 @@ const Login = () => {
           } else {
             navigate('/marketer');
           }
+        } else {
+          console.log('No redirect result - normal page load');
         }
       } catch (err) {
         console.error('Redirect result error:', err);
         if (err.code === 'auth/user-not-found' || err.response?.status === 404) {
           setError('Account not found. Please register first with Google.');
+        } else {
+          setError(err.message || 'Login failed');
         }
       } finally {
         setLoading(false);
