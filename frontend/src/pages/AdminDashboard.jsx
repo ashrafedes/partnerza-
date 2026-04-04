@@ -250,7 +250,8 @@ export default function AdminDashboard() {
     { id: 'supplierPayments', label: `Supplier Payments (${supplierPayments.length})` },
     { id: 'supplierReport', label: 'Supplier Report' },
     { id: 'settings', label: 'Platform Settings' },
-    { id: 'dataReset', label: 'Data Reset' }
+    { id: 'dataReset', label: 'Data Reset' },
+    { id: 'users', label: 'Manage Users', link: '/admin/users' }
   ];
 
   return (
@@ -282,10 +283,17 @@ export default function AdminDashboard() {
       {/* Tabs */}
       <div className="bg-[#232f3e] text-white h-[40px] flex items-center px-4 text-sm overflow-x-auto">
         {tabs.map((tab) => (
-          <button key={tab.id} onClick={() => handleSetActiveTab(tab.id)}
-            className={`px-3 py-1 rounded-sm mr-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-amazon-orange text-amazon-dark' : 'hover:outline hover:outline-1 hover:outline-white'}`}>
-            {tab.label}
-          </button>
+          tab.link ? (
+            <Link key={tab.id} to={tab.link}
+              className="px-3 py-1 rounded-sm mr-2 whitespace-nowrap hover:outline hover:outline-1 hover:outline-white">
+              {tab.label}
+            </Link>
+          ) : (
+            <button key={tab.id} onClick={() => handleSetActiveTab(tab.id)}
+              className={`px-3 py-1 rounded-sm mr-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-amazon-orange text-amazon-dark' : 'hover:outline hover:outline-1 hover:outline-white'}`}>
+              {tab.label}
+            </button>
+          )
         ))}
       </div>
 

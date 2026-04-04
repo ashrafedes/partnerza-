@@ -34,11 +34,19 @@ router.post('/login', async (req, res) => {
         // If user not found in SQLite, auto-create from Firebase data
         if (!user) {
           console.log('User not found in SQLite, auto-creating...');
+          
+          // Check if a user with this email already exists (to preserve role)
+          const existingUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?').get(userEmail);
+          const role = existingUserByEmail ? existingUserByEmail.role : 'marketer';
+          const phone = existingUserByEmail ? existingUserByEmail.phone : '';
+          const whatsapp = existingUserByEmail ? existingUserByEmail.whatsapp : '';
+          const country = existingUserByEmail ? existingUserByEmail.country : 'Egypt';
+          
           const stmt = db.prepare(`
             INSERT INTO users (id, name, email, role, phone, whatsapp, country, password_hash)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `);
-          stmt.run(firebaseUid, userName, userEmail, 'marketer', '', '', 'Egypt', null);
+          stmt.run(firebaseUid, userName, userEmail, role, phone, whatsapp, country, null);
           user = db.prepare('SELECT * FROM users WHERE id = ?').get(firebaseUid);
           console.log('Auto-created user in SQLite:', user);
         }
@@ -288,6 +296,121 @@ router.post('/change-password', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Password change error:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// ========== ADMIN USER MANAGEMENT ENDPOINTS ==========
+
+// GET /api/auth/users - Get all users (superadmin only)
+router.get('/users', verifyToken, requireRole('superadmin'), (req, res) => {
+  try {
+    const users = db.prepare(`
+      SELECT id, name, email, role, phone, whatsapp, country, preferred_city, business_name, telegram, website 
+      FROM users 
+      ORDER BY role, name
+    `).all();
+    res.json({ users });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
+// DELETE /api/auth/users/:id - Delete user (superadmin only)
+router.delete('/users/:id', verifyToken, requireRole('superadmin'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // Don't allow deleting yourself
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+    
+    // Check if user exists
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Delete user from SQLite
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    
+    // Try to delete from Firebase too (if it's a Firebase user)
+    try {
+      await admin.auth().deleteUser(userId);
+    } catch (firebaseErr) {
+      console.log('Firebase delete skipped (user may not exist in Firebase):', firebaseErr.message);
+    }
+    
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// PATCH /api/auth/users/:id/role - Update user role (superadmin only)
+router.patch('/users/:id/role', verifyToken, requireRole('superadmin'), (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { role } = req.body;
+    
+    if (!role || !['superadmin', 'supplier', 'marketer'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be superadmin, supplier, or marketer' });
+    }
+    
+    // Don't allow changing your own role
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot change your own role' });
+    }
+    
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+    
+    const updatedUser = db.prepare('SELECT id, name, email, role, phone, whatsapp, country FROM users WHERE id = ?').get(userId);
+    res.json({ message: 'Role updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error('Update role error:', error);
+    res.status(500).json({ error: 'Failed to update role' });
+  }
+});
+
+// POST /api/auth/users/:id/reset-password - Admin reset user password (superadmin only)
+router.post('/users/:id/reset-password', verifyToken, requireRole('superadmin'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { newPassword } = req.body;
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+    
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Hash new password
+    const newHash = await bcrypt.hash(newPassword, 10);
+    
+    // Update password in SQLite
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, userId);
+    
+    // Try to update in Firebase too
+    try {
+      await admin.auth().updateUser(userId, { password: newPassword });
+    } catch (firebaseErr) {
+      console.log('Firebase password update skipped:', firebaseErr.message);
+    }
+    
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

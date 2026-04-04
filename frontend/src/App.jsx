@@ -13,6 +13,7 @@ import SubmitMultiOrder from './pages/SubmitMultiOrder';
 import MarketerDashboard from './pages/MarketerDashboard';
 import SupplierDashboard from './pages/SupplierDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminUsers from './pages/AdminUsers';
 
 function ProtectedRoute({ children, allowedRole }) {
   const { user, role, loading } = useAuth();
@@ -96,6 +97,11 @@ function App() {
               <Route path="/admin" element={
                 <ProtectedRoute allowedRole="superadmin">
                   <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/users" element={
+                <ProtectedRoute allowedRole="superadmin">
+                  <AdminUsers />
                 </ProtectedRoute>
               } />
               <Route path="/" element={<Home />} />
