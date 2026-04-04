@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /sitemap.xml
+Allow: /sitemap-product-images.xml
+Allow: /google9a677f048b63ef24.html
+
+Sitemap: https://partnerza.onrender.com/sitemap.xml
+Sitemap: https://partnerza.onrender.com/sitemap-product-images.xml
