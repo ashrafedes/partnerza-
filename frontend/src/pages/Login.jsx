@@ -6,10 +6,13 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Load saved credentials if remember me was checked
+  const savedCredentials = JSON.parse(localStorage.getItem('savedCredentials') || '{}');
+  const [email, setEmail] = useState(savedCredentials.email || '');
+  const [password, setPassword] = useState(savedCredentials.password || '');
   const [rememberMe, setRememberMe] = useState(() => {
-    return localStorage.getItem('rememberMe') === 'true';
+    const saved = localStorage.getItem('rememberMe') === 'true';
+    return saved && !!savedCredentials.email;
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -163,6 +166,14 @@ const Login = () => {
           localStorage.setItem('token', token);
           localStorage.setItem('demoUser', JSON.stringify(user));
           localStorage.setItem('rememberMe', rememberMe);
+          
+          // Save or clear credentials based on remember me
+          if (rememberMe) {
+            localStorage.setItem('savedCredentials', JSON.stringify({ email, password }));
+          } else {
+            localStorage.removeItem('savedCredentials');
+          }
+          
           if (!rememberMe) {
             // Set session-only flag
             sessionStorage.setItem('sessionOnly', 'true');
