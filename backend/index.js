@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const db = require('./db');
 
 const app = express();
 
@@ -20,6 +21,36 @@ app.use(express.json());
 
 // Serve uploaded product images as static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Health check endpoint - monitor database state
+app.get('/api/health', (req, res) => {
+  try {
+    const users = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    const products = db.prepare('SELECT COUNT(*) as count FROM products').get();
+    const activeProducts = db.prepare("SELECT COUNT(*) as count FROM products WHERE status = 'active' OR status IS NULL").get();
+    const orders = db.prepare('SELECT COUNT(*) as count FROM orders').get();
+    const images = db.prepare('SELECT COUNT(*) as count FROM product_images').get();
+    
+    // Get recent products (last 5)
+    const recentProducts = db.prepare('SELECT id, name, supplier_id, status, created_at FROM products ORDER BY created_at DESC LIMIT 5').all();
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: {
+        users: users.count,
+        products: products.count,
+        activeProducts: activeProducts.count,
+        orders: orders.count,
+        images: images.count
+      },
+      recentProducts: recentProducts
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ status: 'error', error: error.message });
+  }
+});
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
