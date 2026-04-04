@@ -47,7 +47,7 @@ router.get('/', (req, res) => {
         END as main_image
       FROM products p
       JOIN users u ON p.supplier_id = u.id
-      WHERE p.status = 'active'
+      WHERE (p.status = 'active' OR p.status IS NULL)
     `;
     const params = [];
 
@@ -80,7 +80,7 @@ router.get('/:id', (req, res) => {
       SELECT p.*, u.name as supplier_name, u.country as supplier_country
       FROM products p
       JOIN users u ON p.supplier_id = u.id
-      WHERE p.id = ?
+      WHERE p.id = ? AND (p.status = 'active' OR p.status IS NULL)
     `).get(req.params.id);
     
     if (!product) {
