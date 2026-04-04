@@ -11,6 +11,25 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // First, check for JWT token from email/password login
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('demoUser');
+    
+    if (token && savedUser) {
+      // Restore session from stored data
+      try {
+        const user = JSON.parse(savedUser);
+        setUser(user);
+        setRole(user.role);
+        setLoading(false);
+        return;
+      } catch (error) {
+        console.error('Failed to parse saved user:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('demoUser');
+      }
+    }
+    
     // Check if we're in demo mode
     const isDemoMode = window.location.hostname === 'localhost' && !auth.currentUser;
     
@@ -72,6 +91,7 @@ export function AuthProvider({ children }) {
     }
     setUser(null);
     setRole(null);
+    localStorage.removeItem('token');
     localStorage.removeItem('demoUser');
     window.location.href = '/';
   };
