@@ -137,18 +137,8 @@ const Login = () => {
         setUser(userData);
         localStorage.setItem('demoUser', JSON.stringify(userData));
 
-        const intendedPath = localStorage.getItem('intendedPath');
-        localStorage.removeItem('intendedPath');
-        
-        if (intendedPath && intendedPath !== '/login') {
-          navigate(intendedPath);
-        } else if (userData.role === 'superadmin') {
-          navigate('/admin');
-        } else if (userData.role === 'supplier') {
-          navigate('/supplier');
-        } else {
-          navigate('/marketer');
-        }
+        // Always redirect to home page after login
+        navigate('/');
         return;
       } else {
         // Non-demo user: Try Firebase auth first, then send ID token to backend
@@ -171,18 +161,8 @@ const Login = () => {
           localStorage.setItem('demoUser', JSON.stringify(user));
           setUser(user);
           
-          const intendedPath = localStorage.getItem('intendedPath');
-          localStorage.removeItem('intendedPath');
-          
-          if (intendedPath && intendedPath !== '/login') {
-            navigate(intendedPath);
-          } else if (user.role === 'superadmin') {
-            navigate('/admin');
-          } else if (user.role === 'supplier') {
-            navigate('/supplier');
-          } else {
-            navigate('/marketer');
-          }
+          // Always redirect to home page after login
+          navigate('/');
           return;
         } catch (firebaseErr) {
           console.error('Firebase login error:', firebaseErr);
