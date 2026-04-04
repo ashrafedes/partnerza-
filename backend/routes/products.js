@@ -153,13 +153,13 @@ router.post('/', verifyToken, (req, res) => {
 
     // Insert product
       const stmt = db.prepare(`
-        INSERT INTO products (supplier_id, name, description, price, marketer_commission_rate, platform_fee_rate_override, category, stock_quantity)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (supplier_id, name, description, price, marketer_commission_rate, platform_fee_rate_override, category, stock_quantity, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       const feeOverride = platform_fee_rate_override ? parseFloat(platform_fee_rate_override) : null;
       const stockQty = stock_quantity !== undefined ? parseInt(stock_quantity) : 0;
-      const result = stmt.run(req.user.id, name, description, parseFloat(price), parseFloat(marketer_commission_rate), feeOverride, category, stockQty);
+      const result = stmt.run(req.user.id, name, description, parseFloat(price), parseFloat(marketer_commission_rate), feeOverride, category, stockQty, 'active');
       const productId = result.lastInsertRowid;
       console.log('Product created with ID:', productId);
 
