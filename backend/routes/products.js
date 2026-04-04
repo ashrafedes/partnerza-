@@ -531,4 +531,26 @@ router.post('/:id/variants/check-stock', async (req, res) => {
   }
 });
 
+// DELETE /api/products/:id - Delete product (superadmin only)
+router.delete('/:id', verifyToken, (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only superadmin can delete products' });
+    }
+    
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Soft delete - set status to deleted
+    db.prepare('UPDATE products SET status = ? WHERE id = ?').run('deleted', req.params.id);
+    
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ error: 'Failed to delete product' });
+  }
+});
+
 module.exports = router;
