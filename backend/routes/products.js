@@ -37,6 +37,11 @@ router.get('/', (req, res) => {
     const { search, category } = req.query;
     console.log('Marketplace query - search:', search, 'category:', category);
     
+    // Count total products first
+    const totalCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
+    const activeCount = db.prepare("SELECT COUNT(*) as count FROM products WHERE status = 'active' OR status IS NULL").get();
+    console.log('Database product counts - Total:', totalCount.count, 'Active:', activeCount.count);
+    
     let sql = `
       SELECT p.id, p.name, p.description, p.price, p.marketer_commission_rate,
         p.platform_fee_rate_override, p.category, p.status, p.created_at, p.stock_quantity,
@@ -72,7 +77,9 @@ router.get('/', (req, res) => {
     const products = db.prepare(sql).all(...params);
     console.log('Marketplace found', products.length, 'products');
     if (products.length > 0) {
-      console.log('First product supplier_id:', products[0].supplier_id, 'supplier_name:', products[0].supplier_name);
+      console.log('First product:', {id: products[0].id, name: products[0].name, supplier_id: products[0].supplier_id, supplier_name: products[0].supplier_name});
+    } else {
+      console.log('WARNING: No products found in marketplace query!');
     }
     
     res.json(products);
@@ -326,12 +333,16 @@ router.put('/:id', verifyToken, upload.array('images', 11), (req, res) => {
 // GET /api/products/supplier/mine - Get supplier's own products
 router.get('/supplier/mine', verifyToken, (req, res) => {
   try {
+    console.log('Supplier products request - User:', req.user?.id, 'Role:', req.user?.role);
+    
     if (req.user.role !== 'supplier' && req.user.role !== 'superadmin') {
       return res.status(403).json({ error: 'Not authorized' });
     }
     
     const isSuperadmin = req.user.role === 'superadmin';
     const supplierId = isSuperadmin ? null : req.user.id;
+    
+    console.log('Fetching products for supplier:', supplierId, 'isSuperadmin:', isSuperadmin);
     
     const products = db.prepare(`
       SELECT p.*, u.name as supplier_name,
@@ -343,6 +354,11 @@ router.get('/supplier/mine', verifyToken, (req, res) => {
         AND p.status != 'deleted'
       ORDER BY p.created_at DESC
     `).all(supplierId, isSuperadmin ? 1 : 0);
+    
+    console.log('Supplier dashboard found', products.length, 'products for supplier', supplierId);
+    if (products.length > 0) {
+      console.log('First product:', {id: products[0].id, name: products[0].name, supplier_id: products[0].supplier_id, status: products[0].status});
+    }
     
     res.json(products);
   } catch (error) {
