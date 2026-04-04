@@ -14,7 +14,7 @@ function getDomain() {
   } catch (e) {
     console.error('getDomain - DB error:', e.message);
   }
-  return (process.env.SITE_DOMAIN || 'http://localhost:3001').replace(/\/+$/, '');
+  return (process.env.SITE_DOMAIN || 'https://partnerza.onrender.com').replace(/\/+$/, '');
 }
 
 /**
