@@ -6,6 +6,11 @@ const db = require('../db');
  * Get domain from database settings or fallback to environment/default
  */
 function getDomain() {
+  // Priority: 1) Environment variable, 2) Database setting, 3) Default
+  if (process.env.SITE_DOMAIN) {
+    return process.env.SITE_DOMAIN.replace(/\/+$/, '');
+  }
+  
   try {
     const setting = db.prepare("SELECT value FROM platform_settings WHERE key = 'site_domain'").get();
     if (setting?.value) {
@@ -14,7 +19,8 @@ function getDomain() {
   } catch (e) {
     console.error('getDomain - DB error:', e.message);
   }
-  return (process.env.SITE_DOMAIN || 'https://partnerza.onrender.com').replace(/\/+$/, '');
+  
+  return 'https://partnerza.onrender.com';
 }
 
 /**
