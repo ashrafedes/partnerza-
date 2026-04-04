@@ -138,4 +138,49 @@ router.get('/stats', verifyToken, (req, res) => {
   }
 });
 
+// GET /api/admin/query - Execute read-only SQL query (superadmin only)
+router.get('/query', verifyToken, (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only superadmin can query database' });
+    }
+
+    const { sql, table } = req.query;
+    
+    let query = sql;
+    let params = [];
+    
+    // If table param provided, use safe default query
+    if (table && !sql) {
+      const safeTables = ['products', 'users', 'orders', 'product_images', 'order_items', 'commissions', 'withdrawals'];
+      if (!safeTables.includes(table)) {
+        return res.status(400).json({ error: 'Invalid table name' });
+      }
+      query = `SELECT * FROM ${table} LIMIT 100`;
+    }
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Please provide sql or table parameter' });
+    }
+
+    // Only allow SELECT queries for safety
+    const trimmedQuery = query.trim().toLowerCase();
+    if (!trimmedQuery.startsWith('select')) {
+      return res.status(400). json({ error: 'Only SELECT queries allowed' });
+    }
+
+    console.log('Admin executing query:', query);
+    const results = db.prepare(query).all(...params);
+    
+    res.json({
+      query: query,
+      rowCount: results.length,
+      results: results
+    });
+  } catch (error) {
+    console.error('Query error:', error);
+    res.status(500).json({ error: 'Query failed', details: error.message });
+  }
+});
+
 module.exports = router;
