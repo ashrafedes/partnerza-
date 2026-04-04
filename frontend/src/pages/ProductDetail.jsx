@@ -12,6 +12,9 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [variants, setVariants] = useState([]);
+  const [variantStock, setVariantStock] = useState([]);
+  const [selectedVariants, setSelectedVariants] = useState({});
   const [loading, setLoading] = useState(true);
   const [mainImage, setMainImage] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
@@ -38,13 +41,23 @@ export default function ProductDetail() {
       try {
         const { data } = await api.get(`/api/products/${id}`);
         console.log('ProductDetail - Product data:', data);
-        console.log('ProductDetail - main_media_type:', data.main_media_type, 'main_media_id:', data.main_media_id);
-        console.log('ProductDetail - images:', data.images);
         setProduct(data);
+        
+        // Fetch variants
+        try {
+          const { data: variantData } = await api.get(`/api/products/${id}/variants`);
+          console.log('ProductDetail - Variants:', variantData);
+          setVariants(variantData.variants || []);
+          setVariantStock(variantData.stock || []);
+        } catch (variantErr) {
+          console.log('No variants for this product');
+          setVariants([]);
+          setVariantStock([]);
+        }
+        
         // Set initial main image based on main_media_id
         if (data.main_media_type === 'image' && data.main_media_id && data.images) {
           const mainIndex = data.images.findIndex(img => String(img.id) === String(data.main_media_id));
-          console.log('ProductDetail - mainIndex found:', mainIndex);
           if (mainIndex >= 0) {
             setMainImage(mainIndex);
           }
@@ -331,6 +344,34 @@ export default function ProductDetail() {
                 <div className="mb-4">
                   <h3 className="font-semibold text-amazon-dark mb-1">Description</h3>
                   <p className="text-gray-700 text-sm whitespace-pre-wrap">{product.description}</p>
+                </div>
+              )}
+
+              {/* Product Variants */}
+              {variants.length > 0 && (
+                <div className="mb-4 border-t border-gray-200 pt-4">
+                  <h3 className="font-semibold text-amazon-dark mb-3">Select Options</h3>
+                  {variants.map((variant) => (
+                    <div key={variant.id} className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {variant.variant_name}
+                        {variant.is_required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      <select
+                        value={selectedVariants[variant.variant_name] || ''}
+                        onChange={(e) => setSelectedVariants({
+                          ...selectedVariants,
+                          [variant.variant_name]: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amazon-orange"
+                      >
+                        <option value="">Select {variant.variant_name}</option>
+                        {variant.options.map((option, idx) => (
+                          <option key={idx} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
                 </div>
               )}
 
