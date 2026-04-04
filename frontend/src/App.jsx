@@ -14,6 +14,7 @@ import MarketerDashboard from './pages/MarketerDashboard';
 import SupplierDashboard from './pages/SupplierDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
+import Campaign from './pages/Campaign';
 
 function ProtectedRoute({ children, allowedRole }) {
   const { user, role, loading } = useAuth();
@@ -104,6 +105,7 @@ function App() {
                   <AdminUsers />
                 </ProtectedRoute>
               } />
+              <Route path="/campaign" element={<Campaign />} />
               <Route path="/" element={<Home />} />
             </Routes>
           </Router>
