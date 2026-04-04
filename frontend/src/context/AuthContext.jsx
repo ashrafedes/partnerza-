@@ -22,14 +22,17 @@ export function AuthProvider({ children }) {
     const useToken = token || sessionToken;
     const useUser = savedUser || sessionUser;
     
+    // Track if we restored from storage - used to prevent Firebase from clearing valid session
+    let restoredFromStorage = false;
+    
     if (useToken && useUser) {
       // Restore session from stored data
       try {
-        const user = JSON.parse(useUser);
-        setUser(user);
-        setRole(user.role);
-        setLoading(false);
-        return;
+        const parsedUser = JSON.parse(useUser);
+        setUser(parsedUser);
+        setRole(parsedUser.role);
+        restoredFromStorage = true;
+        console.log('AuthContext: Restored user from storage:', parsedUser.id);
       } catch (error) {
         console.error('Failed to parse saved user:', error);
         localStorage.removeItem('token');
@@ -47,9 +50,9 @@ export function AuthProvider({ children }) {
       const savedDemoUser = localStorage.getItem('demoUser');
       if (savedDemoUser) {
         try {
-          const user = JSON.parse(savedDemoUser);
-          setUser(user);
-          setRole(user.role);
+          const parsedUser = JSON.parse(savedDemoUser);
+          setUser(parsedUser);
+          setRole(parsedUser.role);
         } catch (error) {
           console.error('Failed to parse demo user:', error);
           localStorage.removeItem('demoUser');
@@ -60,27 +63,49 @@ export function AuthProvider({ children }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('AuthContext: Firebase state changed, user:', firebaseUser?.uid || 'null');
+      
       if (firebaseUser) {
+        // Firebase user is logged in - fetch profile and update
         try {
           const { data } = await api.get('/api/auth/me');
           const userData = data.user || data;
           setUser(userData);
           setRole(userData.role);
           
-          // Save to sessionStorage for session persistence (refresh won't logout)
+          // Save to sessionStorage for persistence
           sessionStorage.setItem('token', await firebaseUser.getIdToken());
           sessionStorage.setItem('demoUser', JSON.stringify(userData));
+          console.log('AuthContext: Updated from Firebase:', userData.id);
         } catch (error) {
           console.error('Failed to fetch user profile:', error);
-          setUser(null);
-          setRole(null);
+          // Only clear if auth error and we weren't restored from storage
+          if ((error.response?.status === 401 || error.response?.status === 403) && !restoredFromStorage) {
+            setUser(null);
+            setRole(null);
+          }
         }
       } else {
-        setUser(null);
-        setRole(null);
+        // No Firebase user - ONLY clear if we weren't restored from storage
+        // This prevents Firebase overwriting a valid JWT/email session on refresh
+        if (!restoredFromStorage) {
+          console.log('AuthContext: No Firebase user and no stored session - clearing');
+          setUser(null);
+          setRole(null);
+        } else {
+          console.log('AuthContext: No Firebase user but stored session exists - keeping session');
+        }
       }
       setLoading(false);
     });
+
+    // If restored from storage, ensure loading is set to false after a delay
+    // in case Firebase listener takes too long
+    if (restoredFromStorage) {
+      setTimeout(() => {
+        setLoading(false);
+      }, 500);
+    }
 
     return () => unsubscribe();
   }, []);
