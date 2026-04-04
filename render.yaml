@@ -18,4 +18,7 @@ services:
         sync: false  # Set manually in Render dashboard
       - key: FIREBASE_PRIVATE_KEY
         sync: false  # Set manually in Render dashboard
-
+    disk:
+      name: partnerza-data
+      mountPath: /opt/render/project/src/backend/data
+      sizeGB: 1

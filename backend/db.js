@@ -1,8 +1,21 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'db.sqlite');
+// Use mounted disk path if available (Render), otherwise use local path
+const dbPath = process.env.RENDER_DISK_PATH 
+  ? path.join(process.env.RENDER_DISK_PATH, 'db.sqlite')
+  : path.join(__dirname, 'data', 'db.sqlite');
+
+// Ensure data directory exists
+const fs = require('fs');
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new Database(dbPath);
+
+console.log('SQLite database path:', dbPath);
 
 // Enable WAL mode for better performance
 db.pragma('journal_mode = WAL');
