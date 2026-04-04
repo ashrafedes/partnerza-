@@ -11,14 +11,21 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // First, check for JWT token from email/password login
+    // Check for JWT token from email/password login
     const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('demoUser');
     
-    if (token && savedUser) {
+    // Also check sessionStorage for session-only login
+    const sessionToken = sessionStorage.getItem('token');
+    const sessionUser = sessionStorage.getItem('demoUser');
+    
+    const useToken = token || sessionToken;
+    const useUser = savedUser || sessionUser;
+    
+    if (useToken && useUser) {
       // Restore session from stored data
       try {
-        const user = JSON.parse(savedUser);
+        const user = JSON.parse(useUser);
         setUser(user);
         setRole(user.role);
         setLoading(false);
@@ -27,6 +34,8 @@ export function AuthProvider({ children }) {
         console.error('Failed to parse saved user:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('demoUser');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('demoUser');
       }
     }
     
@@ -57,6 +66,10 @@ export function AuthProvider({ children }) {
           const userData = data.user || data;
           setUser(userData);
           setRole(userData.role);
+          
+          // Save to sessionStorage for session persistence (refresh won't logout)
+          sessionStorage.setItem('token', await firebaseUser.getIdToken());
+          sessionStorage.setItem('demoUser', JSON.stringify(userData));
         } catch (error) {
           console.error('Failed to fetch user profile:', error);
           setUser(null);
@@ -94,7 +107,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('demoUser');
     localStorage.removeItem('rememberMe');
-    sessionStorage.removeItem('sessionOnly');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('demoUser');
     window.location.href = '/';
   };
 
