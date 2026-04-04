@@ -409,7 +409,7 @@ router.delete('/users/:id', verifyToken, requireRole('superadmin'), async (req, 
 });
 
 // PATCH /api/auth/users/:id/role - Update user role (superadmin only)
-router.patch('/users/:id/role', verifyToken, requireRole('superadmin'), (req, res) => {
+router.patch('/users/:id/role', verifyToken, requireRole('superadmin'), async (req, res) => {
   try {
     const userId = req.params.id;
     const { role } = req.body;
@@ -423,12 +423,38 @@ router.patch('/users/:id/role', verifyToken, requireRole('superadmin'), (req, re
       return res.status(400).json({ error: 'Cannot change your own role' });
     }
     
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    let user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     
-    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+    // If user not in SQLite, check Firebase and auto-create
+    if (!user) {
+      try {
+        const firebaseUser = await admin.auth().getUser(userId);
+        // Auto-create user in SQLite
+        const insertStmt = db.prepare(`
+          INSERT INTO users (id, name, email, role, phone, whatsapp, country, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        insertStmt.run(
+          userId,
+          firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Unknown',
+          firebaseUser.email || '',
+          role, // Set the new role
+          firebaseUser.phoneNumber || '',
+          '',
+          'Egypt',
+          'active'
+        );
+        console.log('Auto-created user in SQLite:', userId);
+        // Fetch the newly created user
+        user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      } catch (firebaseErr) {
+        console.error('User not found in Firebase either:', firebaseErr.message);
+        return res.status(404).json({ error: 'User not found' });
+      }
+    } else {
+      // User exists, update role
+      db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+    }
     
     const updatedUser = db.prepare('SELECT id, name, email, role, phone, whatsapp, country FROM users WHERE id = ?').get(userId);
     res.json({ message: 'Role updated successfully', user: updatedUser });
