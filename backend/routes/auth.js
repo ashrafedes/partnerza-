@@ -301,15 +301,74 @@ router.post('/change-password', verifyToken, async (req, res) => {
 
 // ========== ADMIN USER MANAGEMENT ENDPOINTS ==========
 
-// GET /api/auth/users - Get all users (superadmin only)
-router.get('/users', verifyToken, requireRole('superadmin'), (req, res) => {
+// GET /api/auth/users - Get all users (superadmin only) - from both Firebase and SQLite
+router.get('/users', verifyToken, requireRole('superadmin'), async (req, res) => {
   try {
-    const users = db.prepare(`
+    // Get SQLite users
+    const sqliteUsers = db.prepare(`
       SELECT id, name, email, role, phone, whatsapp, country, preferred_city, business_name, telegram, website 
       FROM users 
-      ORDER BY role, name
     `).all();
-    res.json({ users });
+
+    // Get Firebase users
+    let firebaseUsers = [];
+    try {
+      const listUsersResult = await admin.auth().listUsers(1000);
+      firebaseUsers = listUsersResult.users.map(user => ({
+        uid: user.uid,
+        email: user.email,
+        name: user.displayName || user.email?.split('@')[0] || 'Unknown',
+        phone: user.phoneNumber || ''
+      }));
+    } catch (firebaseErr) {
+      console.error('Failed to fetch Firebase users:', firebaseErr.message);
+    }
+
+    // Merge users - Firebase users take precedence for name/email, SQLite for role and other fields
+    const mergedUsers = firebaseUsers.map(fbUser => {
+      const sqliteUser = sqliteUsers.find(sq => sq.id === fbUser.uid || sq.email === fbUser.email);
+      if (sqliteUser) {
+        return {
+          ...sqliteUser,
+          name: fbUser.name || sqliteUser.name,
+          email: fbUser.email || sqliteUser.email,
+          phone: fbUser.phone || sqliteUser.phone
+        };
+      }
+      // Firebase-only user
+      return {
+        id: fbUser.uid,
+        name: fbUser.name,
+        email: fbUser.email,
+        role: 'marketer', // Default role
+        phone: fbUser.phone,
+        whatsapp: '',
+        country: '',
+        preferred_city: '',
+        business_name: '',
+        telegram: '',
+        website: ''
+      };
+    });
+
+    // Add SQLite-only users (users not in Firebase - e.g., demo accounts)
+    sqliteUsers.forEach(sqUser => {
+      const exists = mergedUsers.find(u => u.id === sqUser.id || u.email === sqUser.email);
+      if (!exists) {
+        mergedUsers.push(sqUser);
+      }
+    });
+
+    // Sort by role then name
+    mergedUsers.sort((a, b) => {
+      if (a.role !== b.role) {
+        const roleOrder = { superadmin: 1, supplier: 2, marketer: 3 };
+        return (roleOrder[a.role] || 3) - (roleOrder[b.role] || 3);
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    res.json({ users: mergedUsers });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to get users' });
