@@ -93,6 +93,8 @@ export function AuthProvider({ children }) {
     setRole(null);
     localStorage.removeItem('token');
     localStorage.removeItem('demoUser');
+    localStorage.removeItem('rememberMe');
+    sessionStorage.removeItem('sessionOnly');
     window.location.href = '/';
   };
 

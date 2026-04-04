@@ -8,6 +8,9 @@ import api from '../api/axios';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('rememberMe') === 'true';
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -159,6 +162,13 @@ const Login = () => {
           
           localStorage.setItem('token', token);
           localStorage.setItem('demoUser', JSON.stringify(user));
+          localStorage.setItem('rememberMe', rememberMe);
+          if (!rememberMe) {
+            // Set session-only flag
+            sessionStorage.setItem('sessionOnly', 'true');
+          } else {
+            sessionStorage.removeItem('sessionOnly');
+          }
           setUser(user);
           
           // Always redirect to home page after login
@@ -254,6 +264,20 @@ const Login = () => {
                 placeholder="Enter your password"
                 required
               />
+            </div>
+
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-amazon-orange focus:ring-amazon-orange border-amazon-border rounded"
+              />
+              <label htmlFor="remember-me" className="mr-2 block text-sm text-amazon-gray">
+                Remember me / تذكرني
+              </label>
             </div>
 
             <div>
