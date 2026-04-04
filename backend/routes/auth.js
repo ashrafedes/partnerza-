@@ -167,7 +167,13 @@ router.patch('/profile', verifyToken, (req, res) => {
     
     console.log('Profile update request:', { userId, name, phone, whatsapp, telegram, website, email, business_name, business_email, business_phone });
     
-    // Build update query dynamically
+    // Get current user to preserve role
+    const currentUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Build update query dynamically - NEVER update role through profile endpoint
     const updates = [];
     const values = [];
     
@@ -227,7 +233,7 @@ router.patch('/profile', verifyToken, (req, res) => {
     const result = db.prepare(query).run(...values);
     console.log('Update result:', result);
     
-    // Get updated user
+    // Get updated user - preserve the existing role from database
     const user = db.prepare('SELECT id, name, email, role, phone, whatsapp, country, telegram, website, business_name, business_email, business_phone, preferred_city FROM users WHERE id = ?').get(userId);
     console.log('Updated user:', user);
     
