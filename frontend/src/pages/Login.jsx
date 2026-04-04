@@ -6,13 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
 const Login = () => {
-  // Load saved credentials if remember me was checked
-  const savedCredentials = JSON.parse(localStorage.getItem('savedCredentials') || '{}');
-  const [email, setEmail] = useState(savedCredentials.email || '');
-  const [password, setPassword] = useState(savedCredentials.password || '');
+  // Load saved email if remember me was checked (password is NEVER saved)
+  const savedEmail = localStorage.getItem('savedEmail') || '';
+  const [email, setEmail] = useState(savedEmail);
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => {
-    const saved = localStorage.getItem('rememberMe') === 'true';
-    return saved && !!savedCredentials.email;
+    return localStorage.getItem('rememberMe') === 'true' && !!savedEmail;
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -167,11 +166,11 @@ const Login = () => {
           localStorage.setItem('demoUser', JSON.stringify(user));
           localStorage.setItem('rememberMe', rememberMe);
           
-          // Save or clear credentials based on remember me
+          // Save or clear email based on remember me (password is NEVER saved)
           if (rememberMe) {
-            localStorage.setItem('savedCredentials', JSON.stringify({ email, password }));
+            localStorage.setItem('savedEmail', email);
           } else {
-            localStorage.removeItem('savedCredentials');
+            localStorage.removeItem('savedEmail');
           }
           
           if (!rememberMe) {
