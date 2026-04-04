@@ -35,6 +35,8 @@ const upload = multer({
 router.get('/', (req, res) => {
   try {
     const { search, category } = req.query;
+    console.log('Marketplace query - search:', search, 'category:', category);
+    
     let sql = `
       SELECT p.id, p.name, p.description, p.price, p.marketer_commission_rate,
         p.platform_fee_rate_override, p.category, p.status, p.created_at, p.stock_quantity,
@@ -64,7 +66,14 @@ router.get('/', (req, res) => {
 
     sql += ` ORDER BY p.created_at DESC`;
 
+    console.log('Marketplace SQL:', sql);
+    console.log('Marketplace params:', params);
+    
     const products = db.prepare(sql).all(...params);
+    console.log('Marketplace found', products.length, 'products');
+    if (products.length > 0) {
+      console.log('First product supplier_id:', products[0].supplier_id, 'supplier_name:', products[0].supplier_name);
+    }
     
     res.json(products);
   } catch (error) {
@@ -119,8 +128,9 @@ router.post('/', verifyToken, (req, res) => {
     }
 
     try {
-      console.log('Creating product, user role:', req.user?.role);
-      console.log('Files received:', req.files?.length || 0);
+      console.log('Creating product, user:', req.user);
+      console.log('User ID:', req.user?.id);
+      console.log('User role:', req.user?.role);
       
       if (req.user.role !== 'supplier' && req.user.role !== 'superadmin') {
         return res.status(403).json({ error: 'Only suppliers can add products' });
@@ -159,9 +169,10 @@ router.post('/', verifyToken, (req, res) => {
       
       const feeOverride = platform_fee_rate_override ? parseFloat(platform_fee_rate_override) : null;
       const stockQty = stock_quantity !== undefined ? parseInt(stock_quantity) : 0;
+      console.log('Inserting product with supplier_id:', req.user.id);
       const result = stmt.run(req.user.id, name, description, parseFloat(price), parseFloat(marketer_commission_rate), feeOverride, category, stockQty, 'active');
       const productId = result.lastInsertRowid;
-      console.log('Product created with ID:', productId);
+      console.log('Product created with ID:', productId, 'supplier_id:', req.user.id);
 
       // Insert specs if provided
       if (specs) {

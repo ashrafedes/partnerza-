@@ -11,18 +11,23 @@ const verifyToken = async (req, res, next) => {
     }
     
     const token = authHeader.split(' ')[1];
+    console.log('Token received:', token.substring(0, 20) + '...');
     
     // Check if it's a JWT token (from email/password login)
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key');
+      console.log('JWT decoded:', decoded);
       // JWT token is valid, get user from database
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
       if (!user) {
+        console.log('User not found for ID:', decoded.id);
         return res.status(403).json({ error: 'User not found' });
       }
+      console.log('User found from JWT:', user.id, 'role:', user.role);
       req.user = user;
       return next();
     } catch (jwtErr) {
+      console.log('Not a valid JWT, trying other methods...');
       // Not a valid JWT token, try Firebase or demo tokens
     }
     
@@ -60,7 +65,7 @@ const verifyToken = async (req, res, next) => {
       
       if (user) {
         req.user = user;
-        console.log('Demo user set in req.user:', user);
+        console.log('Demo user set in req.user:', user.id);
         return next();
       }
     }
@@ -75,21 +80,25 @@ const verifyToken = async (req, res, next) => {
       process.env.FIREBASE_CLIENT_EMAIL !== 'firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com';
     
     if (!isFirebaseConfigured) {
-      // No Firebase and no demo token matched
+      console.log('Firebase not configured, rejecting token');
       return res.status(401).json({ error: 'Invalid token' });
     }
     
     // Production mode: verify Firebase token
+    console.log('Verifying Firebase token...');
     const decodedToken = await admin.auth().verifyIdToken(token);
     const uid = decodedToken.uid;
+    console.log('Firebase token verified, UID:', uid);
     
     // Look up user in SQLite
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
     
     if (!user) {
+      console.log('User not found for Firebase UID:', uid);
       return res.status(403).json({ error: 'User not registered' });
     }
     
+    console.log('User found from Firebase:', user.id, 'role:', user.role);
     req.user = user;
     next();
   } catch (error) {
